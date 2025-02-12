@@ -1,4 +1,4 @@
-name: Sync main to prod and Build Production
+name: Sync main to prod and Deploy to GitHub Pages
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       with:
         fetch-depth: 0  # Fetch all branches
 
-    - name: Ensure prod branch exists
+    - name: Ensure prod branch exists and sync with main
       run: |
         git fetch origin prod || echo "prod branch does not exist yet"
         git checkout prod || git checkout -b prod
@@ -25,14 +25,14 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-deploy:
-    needs: sync-prod
+    needs: sync-prod  # Wait until the prod branch is updated
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
       with:
-        ref: prod  # Make sure we are building the latest prod
+        ref: prod  # Build using the latest prod branch
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -48,6 +48,6 @@ jobs:
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
-        branch: gh-pages
-        folder: dist
+        branch: gh-pages  # Ensure deployment happens on gh-pages
+        folder: dist  # The build folder that needs to be deployed
         clean: true
