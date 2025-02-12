@@ -1,0 +1,24 @@
+name: Sync main to prod
+
+on:
+  push:
+    branches:
+      - main  # When main branch is updated, sync to prod
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Merge main into prod
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+        git checkout prod || git checkout -b prod
+        git merge origin/main --allow-unrelated-histories
+        git push origin prod
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
