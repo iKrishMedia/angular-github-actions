@@ -1,24 +1,53 @@
-name: Sync main to prod
+name: Sync main to prod and Build Production
 
 on:
   push:
     branches:
-      - main  # When main branch is updated, sync to prod
+      - main  # Trigger when main is updated
 
 jobs:
-  sync:
+  sync-prod:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all branches
 
-    - name: Merge main into prod
+    - name: Ensure prod branch exists
       run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "github-actions@github.com"
+        git fetch origin prod || echo "prod branch does not exist yet"
         git checkout prod || git checkout -b prod
-        git merge origin/main --allow-unrelated-histories
-        git push origin prod
+        git reset --hard origin/main  # Force sync prod with main
+        git push --force origin prod  # Force push to avoid conflicts
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-deploy:
+    needs: sync-prod
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        ref: prod  # Make sure we are building the latest prod
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Build Production Version
+      run: npm run build -- --configuration=production --output-path=dist --base-href="/angular-github-actions/"
+
+    - name: Deploy to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: gh-pages
+        folder: dist
+        clean: true
